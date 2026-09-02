@@ -298,6 +298,15 @@ func (g *Cloud) ensureExternalLoadBalancer(clusterName string, clusterID string,
 		isSafeToReleaseIP = true
 		klog.Infof("ensureExternalLoadBalancer(%s): Created forwarding rule, IP %s.", lbRefStr, ipAddressToUse)
 	}
+	if labels := GetLoadBalancerAnnotationResourceLabels(apiService); len(labels) > 0 {
+		fwdRule, err := g.GetRegionForwardingRule(loadBalancerName, g.region)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get forwarding rule labels for load balancer (%s): %w", lbRefStr, err)
+		}
+		if err := g.SetRegionForwardingRuleLabels(fwdRule, g.region, labels); err != nil {
+			return nil, fmt.Errorf("failed to reconcile forwarding rule labels for load balancer (%s): %w", lbRefStr, err)
+		}
+	}
 
 	// We can create deny firewall rule only after making sure that the allow firewalls for nodes and healthchecks are created/updated to 999 priority
 	if g.enableL4DenyFirewallRule {

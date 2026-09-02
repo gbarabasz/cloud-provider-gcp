@@ -75,6 +75,39 @@ func TestServiceNetworkTierAnnotationKey(t *testing.T) {
 	}
 }
 
+func TestGetLoadBalancerAnnotationResourceLabels(t *testing.T) {
+	for name, tc := range map[string]struct {
+		annotation string
+		expected   map[string]string
+	}{
+		"missing annotation": {},
+		"empty annotation":   {annotation: ""},
+		"single label": {
+			annotation: "goog-partner-solution=openshift",
+			expected:   map[string]string{"goog-partner-solution": "openshift"},
+		},
+		"multiple labels with whitespace": {
+			annotation: "goog-partner-solution=openshift, environment=dev",
+			expected: map[string]string{
+				"goog-partner-solution": "openshift",
+				"environment":           "dev",
+			},
+		},
+		"malformed entries ignored": {
+			annotation: "valid=value,malformed,=empty-key",
+			expected:   map[string]string{"valid": "value"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := &v1.Service{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}}}
+			if tc.annotation != "" {
+				svc.Annotations[ServiceAnnotationLoadBalancerResourceLabels] = tc.annotation
+			}
+			assert.Equal(t, tc.expected, GetLoadBalancerAnnotationResourceLabels(svc))
+		})
+	}
+}
+
 func TestMergeMap(t *testing.T) {
 	for _, tc := range []struct {
 		desc           string
